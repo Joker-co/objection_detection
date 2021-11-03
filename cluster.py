@@ -10,6 +10,14 @@ warnings.filterwarnings("ignore")
 
 color_map = {'1': '#1f77b4', '2': '#ff7f0e', '3': '#2ca02c', '0': '#d62728', '4': '#9467bd', '5': '#8c564b', '6': '#e377c2', '7': '#7f7f7f', '8': '#bcbd22', '9': '#17becf'}
 
+# resize image
+def resize(scales, max_size, image_w, image_h):
+    short = min(image_w, image_h)
+    large = max(image_w, image_h)
+    scale = np.random.choice(scales)
+    rate = min(scale / short, max_size / large)
+    return rate
+
 def whs2xyxy(bboxes):
     ctrs = np.zeros(bboxes.shape)
     x1 = ctrs[:, 0] - bboxes[:, 0] / 2
@@ -62,14 +70,24 @@ if __name__ == "__main__":
     num_anchors = 5
     coco_loader = COCO(meta_file)
     np.random.seed(1)
+    # resize scales and max_size
+    scales = [600, 800, 900, 1000]
+    max_size = 1000
 
+    meta_imgs = coco_loader.imgs
     annos = coco_loader.imgToAnns
     anno_ids = annos.keys()
     whs = []
     for idx, anno_id in enumerate(anno_ids):
+        meta_img = meta_imgs[anno_id]
         bboxes = annos[anno_id]
+        # get resize rate of image
+        image_w, image_h = meta_img['width'], meta_img['height']
+        rate = resize(scales, max_size, image_w, image_h)
         for bbox in bboxes:
             _, _, width, height = bbox['bbox']
+            # resize width and height
+            width, height = width * rate, height * rate
             whs.append((width, height))
     
     whs = np.stack(whs)
