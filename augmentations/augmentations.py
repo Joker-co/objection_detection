@@ -46,16 +46,18 @@ def Crop(image_path, gts):
     logging.info('crop_bboxes: {}'.format(bboxes_t))
     
     image_t = image[crops[1]:crops[3], crops[0]:crops[2]]
+    logging.info('crop_img shape: {}'.format(image_t.shape))
     bboxes_t[:, :2] = np.maximum(bboxes_t[:, :2], crops[:2])
     bboxes_t[:, 2:] = np.minimum(bboxes_t[:, 2:], crops[2:])
     bboxes_t[:, :2] -= crops[:2]
     bboxes_t[:, 2:] -= crops[:2]
+    logging.info('relocate: {}'.format(bboxes_t))
     
     # visualize
     for bbox in bboxes_t:
         bbox = list(map(int, bbox))
-        cv2.rectangle(image, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 2)
-    cv2.imwrite('crop.jpg', image)
+        cv2.rectangle(image_t, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 2)
+    cv2.imwrite('crop.jpg', image_t)
     
 def parse(images, meta_file):
     coco_loader = COCO(meta_file)

@@ -2,4 +2,4 @@
 
 # Crop
 
-<img src="augmentations/initial.jpg" width="500"/><img src="augmentations/crop.jpg" width="500"/>
+<p align="center"><img src="augmentations/initial.jpg" width="250"/><img src="augmentations/crop.jpg" width="250"/></p>
