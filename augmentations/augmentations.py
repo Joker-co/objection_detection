@@ -44,7 +44,8 @@ def Crop(image_path, gts):
     flag = ious >= 1
     bboxes_t = gts[flag]
     logging.info('crop_bboxes: {}'.format(bboxes_t))
-    
+   
+    rate = min(height / h, width / w) 
     image_t = image[crops[1]:crops[3], crops[0]:crops[2]]
     logging.info('crop_img shape: {}'.format(image_t.shape))
     bboxes_t[:, :2] = np.maximum(bboxes_t[:, :2], crops[:2])
@@ -54,8 +55,9 @@ def Crop(image_path, gts):
     logging.info('relocate: {}'.format(bboxes_t))
     
     # visualize
+    image_t = cv2.resize(image_t, None, None, fx=rate, fy=rate, interpolation=cv2.INTER_LINEAR)
     for bbox in bboxes_t:
-        bbox = list(map(int, bbox))
+        bbox = list(map(int, bbox * rate))
         cv2.rectangle(image_t, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 2)
     cv2.imwrite('crop.jpg', image_t)
     
