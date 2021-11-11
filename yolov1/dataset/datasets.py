@@ -8,7 +8,7 @@ import numpy as np
 from pycocotools.coco import COCO
 import torch.utils.data as data
 
-from transforms import RandomFlip, RandomResize
+from transforms import RandomFlip, RandomResize, ToTensor, Normalize
 
 logging.basicConfig(level=logging.INFO)
 
@@ -18,7 +18,8 @@ class COCODataset(data.Dataset):
     __getitem__(self, index): output image, gts
     """
 
-    def __init__(self, meta_file, image_dir, scales=[416], max_scale=416, root='../../datasets'):
+    def __init__(self, meta_file, image_dir, scales=[416], max_scale=416,
+                 means=[0.485, 0.456, 0.406], stds=[0.229, 0.224, 0.225], root='../../datasets'):
         super(COCODataset, self).__init__()
         # COCO load annotation file
         meta_file = os.path.join(root, meta_file)
@@ -36,6 +37,13 @@ class COCODataset(data.Dataset):
         self.random_flip = RandomFlip()
         # Resize
         self.resize = RandomResize(scales, max_scale)
+        # ToTensor
+        self.totensor = ToTensor()
+        # Normalize
+        self.normalize = Normalize(means, stds)
+
+    def __len__(self):
+        return len(self.img_ids)
 
     def transform(self, image, gt_bboxes):
         image, gt_bboxes = copy.copy(image), copy.copy(gt_bboxes)
@@ -43,7 +51,12 @@ class COCODataset(data.Dataset):
         image, gts = self.random_flip(image, gt_bboxes)
         # Resize
         image, gts, scale_factor = self.resize(image, gts)
-        return image, gts, scale_factor
+        resize_h, resize_w = image.shape[:2]
+        # ToTensor
+        image, gts = self.totensor(image, gts)
+        # normalize
+        image = self.normalize(image)
+        return image, gts, scale_factor, resize_h, resize_w
 
     def vis(self, image, bboxes, save_path):
         image, bboxes = copy.copy(image), copy.copy(bboxes)
@@ -75,10 +88,10 @@ class COCODataset(data.Dataset):
         # gt_bboxes -> numpy.array
         gt_bboxes = np.array(gt_bboxes)
 
-        image, gt_bboxes, scale_factor = self.transform(image, gt_bboxes)
+        image, gt_bboxes, scale_factor, resize_h, resize_w = self.transform(image, gt_bboxes)
         # record scale_factor
         # [h, w]
-        image_info = [scale_factor, scale_factor]
+        image_info = [[scale_factor, scale_factor], resize_h, resize_w]
 
         # dict
         output = {}
@@ -93,4 +106,4 @@ if __name__ == '__main__':
     logging.info('len images: {}'.format(len(train_dataset.imgs)))
     logging.info('cats: {}'.format(train_dataset.cats))
     train_dataset.__getitem__(0)
-    # logging.info('image_ids: {}'.format(train_dataset.img_ids))
+    logging.info('image_ids: {}'.format(train_dataset.img_ids))
