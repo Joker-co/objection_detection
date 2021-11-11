@@ -8,7 +8,7 @@ import numpy as np
 from pycocotools.coco import COCO
 import torch.utils.data as data
 
-from transforms import RandomFlip
+from transforms import RandomFlip, RandomResize
 
 logging.basicConfig(level=logging.INFO)
 
@@ -18,7 +18,7 @@ class COCODataset(data.Dataset):
     __getitem__(self, index): output image, gts
     """
 
-    def __init__(self, meta_file, image_dir, root='../../datasets'):
+    def __init__(self, meta_file, image_dir, scales=[416], max_scale=416, root='../../datasets'):
         super(COCODataset, self).__init__()
         # COCO load annotation file
         meta_file = os.path.join(root, meta_file)
@@ -34,13 +34,15 @@ class COCODataset(data.Dataset):
         # transforms
         # random flip
         self.random_flip = RandomFlip()
+        # Resize
+        self.resize = RandomResize(scales, max_scale)
 
     def transform(self, image, gt_bboxes):
         image, gt_bboxes = copy.copy(image), copy.copy(gt_bboxes)
-        # self.vis(image, gt_bboxes, 'initial.jpg')
         # random flip
         image, gts = self.random_flip(image, gt_bboxes)
-        # self.vis(image, gts, 'flip.jpg')
+        # Resize
+        image, gts = self.resize(image, gts)
         return image, gts
 
     def vis(self, image, bboxes, save_path):
