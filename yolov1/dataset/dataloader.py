@@ -14,6 +14,7 @@ except:
 class HSampler(data.Sampler):
     def __init__(self, dataset):
         super(HSampler, self).__init__(dataset)
+        self.dataset = dataset
         
         try:
             self.num_device = get_world_size()
@@ -21,7 +22,7 @@ class HSampler(data.Sampler):
         except:
             self.num_device = 1
             self.rank = 0
-        self.num_sampler = int(math.ceil(len(self.img_ids) / self.num_device))
+        self.num_sampler = int(math.ceil(len(dataset) / self.num_device))
         self.total_size = self.num_sampler * self.num_device
 
     def __iter__(self):
@@ -54,7 +55,7 @@ class HBatchSampler(data.BatchSampler):
                 batches.append(batch)
                 batch = []
             batch.append(idx)
-        if len(batch) > 0 and not drop_last:
+        if len(batch) > 0 and not self.drop_last:
             batches.append(batch)
         return iter(batches)
 
@@ -67,14 +68,13 @@ class HBatchSampler(data.BatchSampler):
 class HDataLoader(data.DataLoader):
     def __init__(self,
                  dataset,
-                 batch_size,
-                 sampler,
-                 batch_sampler,
-                 num_workers,
+                 batch_size=1,
+                 batch_sampler=None,
+                 num_workers=1,
+                 sampler=None,
                  shuffle=False,
                  pin_memory=False,
                  drop_last=False,
-                 shuffle=False,
                  pad_value=0,
                  alignment=32):
         super(HDataLoader, self).__init__(
@@ -99,3 +99,17 @@ class HDataLoader(data.DataLoader):
 
 if __name__ == "__main__":
     dataset = COCODataset('debug_coco.json', 'debug_imgs')
+    sampler = HSampler(dataset)
+    iter_sampler = iter(sampler)
+    batch_sampler = HBatchSampler(sampler, 2)
+    print('dataset {}'.format(len(dataset)))
+    print('sampler {} num_sampler {}'.format(sampler.dataset, sampler.num_sampler))
+    for sid in sampler:
+        print('sid {}'.format(sid))
+    print('batch sampler {}'.format(len(batch_sampler)))
+    for batch_ids in batch_sampler:
+        print('batch_ids {}'.format(batch_ids))
+    dataloader = HDataLoader(dataset, batch_sampler=batch_sampler, num_workers=4)
+    print('dataloader {}'.format(dataloader))
+    for dl in dataloader:
+        print('dataloader {}'.format(dl))
