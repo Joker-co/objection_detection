@@ -37,4 +37,4 @@ class RandomResize(object):
         image = cv2.resize(image, (resize_w, resize_h), interpolation=cv2.INTER_NEAREST)
         # resize gts
         gts[:, :4] = gts[:, :4] * scale_factor
-        return image, gts
+        return image, gts, scale_factor

@@ -42,8 +42,8 @@ class COCODataset(data.Dataset):
         # random flip
         image, gts = self.random_flip(image, gt_bboxes)
         # Resize
-        image, gts = self.resize(image, gts)
-        return image, gts
+        image, gts, scale_factor = self.resize(image, gts)
+        return image, gts, scale_factor
 
     def vis(self, image, bboxes, save_path):
         image, bboxes = copy.copy(image), copy.copy(bboxes)
@@ -75,10 +75,8 @@ class COCODataset(data.Dataset):
         # gt_bboxes -> numpy.array
         gt_bboxes = np.array(gt_bboxes)
 
-        image, gt_bboxes = self.transform(image, gt_bboxes)
-        print(gt_bboxes)
-        print(image.shape)
-        print(image.dtype)
+        image, gt_bboxes, scale_factor = self.transform(image, gt_bboxes)
+        
 
 if __name__ == '__main__':
     train_dataset = COCODataset('debug_coco.json', 'debug_imgs')
