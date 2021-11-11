@@ -76,7 +76,16 @@ class COCODataset(data.Dataset):
         gt_bboxes = np.array(gt_bboxes)
 
         image, gt_bboxes, scale_factor = self.transform(image, gt_bboxes)
-        
+        # record scale_factor
+        # [h, w]
+        image_info = [scale_factor, scale_factor]
+
+        # dict
+        output = {}
+        output['image'] = image
+        output['gt_bboxes'] = gt_bboxes
+        output['image_info'] = image_info
+        return output
 
 if __name__ == '__main__':
     train_dataset = COCODataset('debug_coco.json', 'debug_imgs')
