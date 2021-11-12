@@ -15,6 +15,7 @@ class HSampler(data.Sampler):
     def __init__(self, dataset):
         super(HSampler, self).__init__(dataset)
         self.dataset = dataset
+        self.epoch = 0
         
         try:
             self.num_device = get_world_size()
@@ -28,7 +29,7 @@ class HSampler(data.Sampler):
     def __iter__(self):
         # shuffle dataset ids
         g = torch.Generator()
-        g.manual_seed(0)
+        g.manual_seed(self.epoch)
         shuffle_ids = list(torch.randperm(len(self.dataset), generator=g))
 
         # align shuffle ids into total_size
@@ -43,6 +44,9 @@ class HSampler(data.Sampler):
 
     def __len__(self):
         return self.num_sampler
+
+    def set_seed(self, epoch):
+        self.epoch = epoch
 
 class HBatchSampler(data.BatchSampler):
     def __init__(self, sampler, batch_size, drop_last=False):
@@ -109,7 +113,7 @@ if __name__ == "__main__":
     print('batch sampler {}'.format(len(batch_sampler)))
     for batch_ids in batch_sampler:
         print('batch_ids {}'.format(batch_ids))
-    dataloader = HDataLoader(dataset, batch_sampler=batch_sampler, num_workers=4)
-    print('dataloader {}'.format(dataloader))
-    for dl in dataloader:
-        print('dataloader {}'.format(dl))
+    for _ in range(5):
+        dataloader = HDataLoader(dataset, batch_sampler=batch_sampler, num_workers=4)
+        dataloader.batch_sampler.sampler.set_seed(_)
+        print('dataloader {}'.format(list(dataloader.batch_sampler.sampler)))
