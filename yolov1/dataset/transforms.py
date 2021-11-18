@@ -79,6 +79,6 @@ class Normalize(object):
     def __call__(self, image):
         image = copy.copy(image)
         image = image / 255
-        image = image - torch.tensor(self.means)
-        image = image / torch.tensor(self.stds)
+        image = image - torch.tensor(self.means).view(-1, 1, 1)
+        image = image / torch.tensor(self.stds).view(-1, 1, 1)
         return image

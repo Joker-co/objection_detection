@@ -31,6 +31,10 @@ class COCODataset(data.Dataset):
         self.img_ids = sorted(list(self.imgs.keys()))
         # categories
         self.cats = self.meta_file.cats
+        # process continue cats
+        self.cat_even2continue = {
+            c_id: idx + 1 for idx, c_id in enumerate(sorted(self.cats.keys()))
+        }
 
         # transforms
         # random flip
@@ -81,7 +85,7 @@ class COCODataset(data.Dataset):
         for anno in meta_anno:
             # x1, y1, w, h
             bbox = anno['bbox']
-            cat = anno['category_id']
+            cat = self.cat_even2continue[anno['category_id']]
             x1, y1, w, h = bbox
             x2, y2 = x1 + w, y1 + h
             gt_bboxes.append([x1, y1, x2, y2, cat])

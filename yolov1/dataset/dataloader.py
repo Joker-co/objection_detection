@@ -95,6 +95,10 @@ class HDataLoader(data.DataLoader):
         
         # padded all images in batch
         images = self.pad(images, image_infos)
+        _, _, padded_h, padded_w = images.shape
+        for idx in range(len(image_infos)):
+            image_infos[idx].append(padded_h)
+            image_infos[idx].append(padded_w)
         return {
                 'images': images,
                 'gt_bboxes': gt_bboxes,
