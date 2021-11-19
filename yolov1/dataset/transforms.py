@@ -42,7 +42,7 @@ class RandomResize(object):
         return image, gts, scale_factor
 
 class Pad(object):
-    def __init__(self, pad_value=0, alignment=1):
+    def __init__(self, pad_value=0, alignment=32):
         self.pad_value = pad_value
         self.alignment = alignment
 
