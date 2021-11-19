@@ -136,11 +136,34 @@ class Yolov1PostProcess(nn.Module):
             'loc_center_loss': loc_center_loss,
             'loc_border_loss': loc_border_loss
         }
+
+    def decode_bbox(self, loc_pred, grids):
+        loc_pred = loc_pred.clone()
+        dt_bboxes = torch.zeros_like(loc_pred)
+        loc_pred[:, :, :2] = loc_pred[:, :, :2].sigmoid() + grids
+        loc_pred[:. :, 2:] = torch.exp(loc_pred[:, :, 2:])
+
+        dt_bboxes[:, :, 0] = loc_pred[:, :, 0] * self.stride - loc_pred[:, :, 2] / 2
+        dt_bboxes[:, :, 1] = loc_pred[:, :, 1] * self.stride - loc_pred[:, :, 3] / 2
+        dt_bboxes[:, :, 2] = loc_pred[:, :, 2] * self.stride + loc_pred[:, :, 2] / 2
+        dt_bboxes[:, :, 3] = loc_pred[:, :, 3] * self.stride + loc_pred[:, :, 3] / 2
+
+        return dt_bboxes
     
+    def generate_grids(self, image_infos):
+        padded_h, padded_w = image_infos[0][-2:]
+        # downsample
+        feat_h, feat_w = padded_h // self.stride, padded_w // self.stride
+        grid_cy, grid_cx = torch.meshgrid([torch.arange(feat_h), torch.arange(feat_w)])
+        grids = torch.stack([grid_cx, grid_cy], dim=-1).float()
+
+        return grids
+
     def forward(self, x):
         preds = x['feats']
         gt_bboxes = x['gt_bboxes']
         image_infos = x['image_infos']
+        padded_h, padded_w = image_infos[0][-2:]
 
         # filter dirty gts
         valid_gt_bboxes = self.filter(gt_bboxes, image_infos)
@@ -161,3 +184,20 @@ class Yolov1PostProcess(nn.Module):
             targets = self.get_targets(valid_gt_bboxes, image_infos, self.stride)
             losses = self.get_loss(obj_pred, cls_pred, loc_pred, targets)
             return losses
+        else:
+            # generate grids
+            grids = self.generate_grids(image_infos)
+            grids = grids.view(B, -1, 2).to(self.device)
+            with torch.no_grad():
+                # [B, K, 1]
+                obj_pred = obj_pred.sigmoid()
+                # decode bboxes
+                dt_bboxes = self.decode_bbox(loc_pred, grids)
+                dt_bboxes[:, :, 0] = torch.clamp(dt_bboxes[:, :, 0], min=0, max=padded_w)
+                dt_bboxes[:, :, 1] = torch.clamp(dt_bboxes[:, :, 1], min=0, max=padded_h)
+                dt_bboxes[:, :, 2] = torch.clamp(dt_bboxes[:, :, 2], min=0, max=padded_w)
+                dt_bboxes[:, :, 3] = torch.clamp(dt_bboxes[:, :, 3], min=0, max=padded_h)
+                scores = cls_pred.softmax(dim=2) * obj_pred
+
+                dt_results = self.predict(dt_bboxes, scores)
+            return dt_results
