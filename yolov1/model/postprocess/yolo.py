@@ -22,12 +22,15 @@ class MSELoss(_Loss):
         return self.w_obj * pos_loss + self.w_noobj * neg_loss
 
 class Yolov1PostProcess(nn.Module):
-    def __init__(self, num_classes, stride, train=True, device='cuda', w_obj=5.0, w_noobj=1.0):
+    def __init__(self, num_classes, stride, train=True, device='cuda', w_obj=5.0, w_noobj=1.0,
+                 score_thresh=0.01, nms_thresh=0.5):
         super(Yolov1PostProcess, self).__init__()
         self.num_classes = num_classes
         self.train = train
         self.stride = stride
         self.device = device
+        self.score_thresh = score_thresh
+        self.nms_thresh = nms_thresh
 
         # build loss
         self.obj_loss = MSELoss(w_obj, w_noobj, reduction='mean')
@@ -158,6 +161,76 @@ class Yolov1PostProcess(nn.Module):
         grids = torch.stack([grid_cx, grid_cy], dim=-1).float()
 
         return grids
+
+    def nms(self, bboxes, scores):
+        order = scores.argsort(dim=0)[::-1]
+        # calculate bboxes area
+        x1 = bboxes[:, 0]
+        y1 = bboxes[:, 1]
+        x2 = bboxes[:, 2]
+        y2 = bboxes[:, 3]
+        areas = (x2 - x1) * (y2 - y1)
+
+        keep = []
+        while order.numel() > 0:
+            # max score box id
+            idx = order[0]
+            keep.append(idx)
+            xx1 = torch.maximum(x1[idx], x1[order[1:]])
+            yy1 = torch.maximum(y1[idx], y1[order[1:]])
+            xx2 = torch.minimum(x2[idx], x2[order[1:]])
+            yy2 = torch.minimum(y2[idx], y2[order[1:]])
+
+            w = torch.maximum(0, xx2 - xx1)
+            h = torch.maximum(0, yy2 - yy1)
+            inter = w * h
+            ovr = inter / (areas[idx] + areas[order[1:]] - inter)
+            inds = torch.nonzero(ovr <= self.nms_thresh).view(-1)
+            order = order[inds + 1]
+        return keep
+
+    def predict(self, dt_bboxes, scores):
+        """
+        dt_bboxes: (B, K, 4)
+        scores: (B, K, num_classes)
+        """
+        dt_bboxes = dt_bboxes.clone()
+        scores = scores.clone()
+        B, _, _ = dt_bboxes.shape()
+
+        batch_dets = []
+        for b_idx in range(B):
+            # (K, 4)
+            b_bboxes = dt_bboxes[b_idx]
+            # (K, num_classes)
+            b_scores = scores[b_idx]
+            # select max class score
+            cls_inds = torch.argmax(b_scores, axis=1)
+            b_scores = b_scores[torch.arange(b_scores.shape[0]), cls_inds]
+            # filter by threshold
+            keep = b_scores >= self.score_thresh
+            b_scores = b_scores[keep]
+            b_bboxes = b_bboxes[keep]
+            cls_inds = cls_inds[keep]
+
+            # nms
+            keep = torch.zeros(cls_inds.shape[0], dtype=torch.int8)
+            for cls in range(self.num_classes):
+                inds = torch.nonzero(cls_inds == cls).view(-1)
+                if inds.numel() == 0:
+                    continue
+                cls_bboxes = b_bboxes[inds]
+                cls_scores = b_scores[inds]
+                keep_nms = self.nms(cls_bboxes, cls_scores)
+                keep_nms = torch.tensor(keep_nms)
+                keep[inds[keep_nms]] = 1
+            
+            det_bboxes = b_bboxes[keep > 0]
+            det_scores = b_scores[keep > 0]
+            det_labels = cls_inds[keep > 0]
+            batch_dets.append([det_bboxes, det_scores, det_labels])
+        
+        return batch_dets
 
     def forward(self, x):
         preds = x['feats']
