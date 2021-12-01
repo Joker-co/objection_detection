@@ -117,7 +117,15 @@ if __name__ == "__main__":
     print('batch sampler {}'.format(len(batch_sampler)))
     for batch_ids in batch_sampler:
         print('batch_ids {}'.format(batch_ids))
-    for _ in range(5):
-        dataloader = HDataLoader(dataset, batch_sampler=batch_sampler, num_workers=4)
-        dataloader.batch_sampler.sampler.set_seed(_)
-        print('dataloader {}'.format(list(dataloader.batch_sampler.sampler)))
+    dataloader = HDataLoader(dataset, batch_sampler=batch_sampler, num_workers=4)
+    test_loader = iter(dataloader)
+    count = 1
+    while count < 100:
+        try:
+            next(test_loader)
+        except StopIteration:
+            print('update dataloader')
+            test_loader = iter(dataloader)
+        print('dataloader count', count)
+        count += 1
+    print('length of batch sampler', len(dataloader.batch_sampler))
