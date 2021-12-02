@@ -9,7 +9,7 @@ class Yolov1Head(nn.Module):
         self.out_channels = 1 + self.num_classes + 4
         self.pred = nn.Conv2d(inplanes, self.out_channels, kernel_size=1)
 
-    def forward(self. x):
+    def forward(self, x):
         feat = x['feats']
 
         out = self.pred(feat)

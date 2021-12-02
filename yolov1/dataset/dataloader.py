@@ -1,8 +1,8 @@
 import math
 import torch
 import torch.utils.data as data
-from datasets import COCODataset
-from transforms import Pad
+from yolov1.dataset.datasets import COCODataset
+from yolov1.dataset.transforms import Pad
 
 try:
     from utils import get_world_size

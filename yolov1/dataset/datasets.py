@@ -8,7 +8,7 @@ import numpy as np
 from pycocotools.coco import COCO
 import torch.utils.data as data
 
-from transforms import RandomFlip, RandomResize, ToTensor, Normalize
+from yolov1.dataset.transforms import RandomFlip, RandomResize, ToTensor, Normalize
 
 logging.basicConfig(level=logging.INFO)
 
@@ -19,12 +19,11 @@ class COCODataset(data.Dataset):
     """
 
     def __init__(self, meta_file, image_dir, scales=[416], max_scale=416,
-                 means=[0.485, 0.456, 0.406], stds=[0.229, 0.224, 0.225], root='../../datasets'):
+                 means=[0.485, 0.456, 0.406], stds=[0.229, 0.224, 0.225]):
         super(COCODataset, self).__init__()
         # COCO load annotation file
-        meta_file = os.path.join(root, meta_file)
         self.meta_file = COCO(meta_file)
-        self.image_dir = os.path.join(root, image_dir)
+        self.image_dir = image_dir
         # get image ids
         self.annos = self.meta_file.imgToAnns
         self.imgs = self.meta_file.imgs

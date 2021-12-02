@@ -144,7 +144,7 @@ class Yolov1PostProcess(nn.Module):
         loc_pred = loc_pred.clone()
         dt_bboxes = torch.zeros_like(loc_pred)
         loc_pred[:, :, :2] = loc_pred[:, :, :2].sigmoid() + grids
-        loc_pred[:. :, 2:] = torch.exp(loc_pred[:, :, 2:])
+        loc_pred[:, :, 2:] = torch.exp(loc_pred[:, :, 2:])
 
         dt_bboxes[:, :, 0] = loc_pred[:, :, 0] * self.stride - loc_pred[:, :, 2] / 2
         dt_bboxes[:, :, 1] = loc_pred[:, :, 1] * self.stride - loc_pred[:, :, 3] / 2

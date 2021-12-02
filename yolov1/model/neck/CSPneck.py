@@ -84,6 +84,7 @@ class SAM(nn.Module):
 
 class CSPNeck(nn.Module):
     def __init__(self, inplanes, planes):
+        super(CSPNeck, self).__init__()
         self.SPP = nn.Sequential(
             Conv(inplanes, planes, kernel_size=1),
             SPP(),

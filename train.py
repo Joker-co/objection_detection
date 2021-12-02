@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 import torch.optim as optim
 import copy
@@ -46,28 +47,28 @@ class Model(nn.Module):
         return output
 
 def main():
-    batch_size = 
-    num_workers = 
-    num_classes = 
-    lr = 
-    momentum = 
-    weight_decay = 
-    milestones = 
-    warm_epoch = 
-    max_epoch = 
+    train_scales = [416, 416]
+    batch_size = 32
+    num_workers = 8
+    num_classes = 80
+    lr = 1e-3
+    momentum = 0.9
+    weight_decay = 5e-4 
+    milestones = [60, 90, 160]
+    warm_epoch = 2
+    max_epoch = 160
     # build train data
-    train_meta = ''
-    train_image_dir = ''
+    train_meta = '/home/SENSETIME/wushuo/hjh/objection_detection/datasets/debug_coco.json'
+    train_image_dir = '/home/SENSETIME/wushuo/hjh/objection_detection/datasets/debug_imgs'
     device = torch.device("cuda")
 
-    train_dataset = COCODataset(meta_file, train_image_dir)
+    train_dataset = COCODataset(train_meta, train_image_dir, scales=[train_scales[0]], max_scale=train_scales[1])
     # build train dataloader
     # build sampler
     train_sampler = HSampler(train_dataset)
     train_batch_sampler = HBatchSampler(train_sampler, batch_size=batch_size)
     # build dataloader
     train_dataloader = HDataLoader(dataset=train_dataset,
-                                   batch_size=batch_size,
                                    batch_sampler=train_batch_sampler,
                                    num_workers=num_workers)
     iter_train_loader = iter(train_dataloader)
@@ -87,6 +88,7 @@ def main():
                           lr=lr,
                           momentum=momentum,
                           weight_decay=weight_decay)
+    milestones = [_ * len(train_dataloader) for _ in milestones]
     lr_scheduler = HCombineLR(epoch_size=len(train_dataloader),
                               optimizer=optimizer,
                               milestones=milestones,
