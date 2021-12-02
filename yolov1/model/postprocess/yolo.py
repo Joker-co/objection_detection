@@ -22,7 +22,7 @@ class MSELoss(_Loss):
         return self.w_obj * pos_loss + self.w_noobj * neg_loss
 
 class Yolov1PostProcess(nn.Module):
-    def __init__(self, num_classes, stride, train=True, device='cuda', w_obj=5.0, w_noobj=1.0,
+    def __init__(self, num_classes, stride, train=True, device=torch.device("cuda"), w_obj=5.0, w_noobj=1.0,
                  score_thresh=0.01, nms_thresh=0.5):
         super(Yolov1PostProcess, self).__init__()
         self.num_classes = num_classes
@@ -136,8 +136,8 @@ class Yolov1PostProcess(nn.Module):
         return {
             'obj_loss': obj_loss,
             'cls_loss': cls_loss,
-            'loc_center_loss': loc_center_loss,
-            'loc_border_loss': loc_border_loss
+            'loc_loss': loc_center_loss + loc_border_loss,
+            'total_loss': total_loss
         }
 
     def decode_bbox(self, loc_pred, grids):

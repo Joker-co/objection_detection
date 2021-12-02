@@ -94,7 +94,7 @@ class HDataLoader(data.DataLoader):
             image_infos.append(item['image_info'])
         
         # padded all images in batch
-        images = self.pad(images, image_infos)
+        images = self.pad(images, image_infos).cuda()
         _, _, padded_h, padded_w = images.shape
         for idx in range(len(image_infos)):
             image_infos[idx].append(padded_h)
@@ -104,12 +104,15 @@ class HDataLoader(data.DataLoader):
                 'gt_bboxes': gt_bboxes,
                 'image_infos': image_infos
                 }
+    
+    def __len__(self):
+        return len(self.batch_sampler)
 
 if __name__ == "__main__":
     dataset = COCODataset('debug_coco.json', 'debug_imgs')
     sampler = HSampler(dataset)
     iter_sampler = iter(sampler)
-    batch_sampler = HBatchSampler(sampler, 2)
+    batch_sampler = HBatchSampler(sampler, 8)
     print('dataset {}'.format(len(dataset)))
     print('sampler {} num_sampler {}'.format(sampler.dataset, sampler.num_sampler))
     for sid in sampler:
@@ -119,13 +122,16 @@ if __name__ == "__main__":
         print('batch_ids {}'.format(batch_ids))
     dataloader = HDataLoader(dataset, batch_sampler=batch_sampler, num_workers=4)
     test_loader = iter(dataloader)
+    test_batch_sampler = iter(batch_sampler)
     count = 1
     while count < 100:
+        # next(test_batch_sampler)
         try:
-            next(test_loader)
+            print(next(test_batch_sampler))
         except StopIteration:
-            print('update dataloader')
-            test_loader = iter(dataloader)
+            print('update batch_sampler')
+            batch_sampler.sampler.set_seed(count)
+            test_batch_sampler = iter(batch_sampler)
         print('dataloader count', count)
         count += 1
     print('length of batch sampler', len(dataloader.batch_sampler))

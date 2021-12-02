@@ -18,7 +18,6 @@ class HCombineLR(HMultiStepLR):
                  optimizer,
                  milestones,
                  warm_epoch,
-                 epoch_size,
                  gamma=0.1,
                  last_epoch=-1,
                  verbose=False):
