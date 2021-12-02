@@ -56,9 +56,12 @@ def main():
     warm_epoch = 2
     max_epoch = 160
     # build train data
-    train_meta = '/mnt/lustre/share/DSK/datasets/mscoco2017/annotations/instances_train2017.json'
-    train_image_dir = '/mnt/lustre/share/DSK/datasets/mscoco2017/train2017'
-    pretrained_model = '/mnt/lustre/share/DSK/model_zoo/pytorch/imagenet/resnet18-5c106cde.pth' 
+    # train_meta = '/mnt/lustre/share/DSK/datasets/mscoco2017/annotations/instances_train2017.json'
+    train_meta = 'datasets/debug_coco.json'
+    # train_image_dir = '/mnt/lustre/share/DSK/datasets/mscoco2017/train2017'
+    train_image_dir = 'datasets/debug_imgs'
+    # pretrained_model = '/mnt/lustre/share/DSK/model_zoo/pytorch/imagenet/resnet18-5c106cde.pth' 
+    pretrained_model = '../resnet18-5c106cde.pth'
     device = torch.device("cuda")
 
     train_dataset = COCODataset(train_meta, train_image_dir, scales=[train_scales[0]], max_scale=train_scales[1])
@@ -103,7 +106,7 @@ def main():
             print('update dataloader')
             epoch_idx = iter_idx // epoch_size
             train_dataloader.batch_sampler.sampler.set_seed(epoch_idx)
-            test_batch_sampler = iter(batch_sampler)
+            test_batch_sampler = iter(train_batch_sampler)
 
         # forward
         output = model(batch)
