@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import numpy as np
 from torch.nn.modules.loss import _Loss
 
 class MSELoss(_Loss):
@@ -9,10 +10,10 @@ class MSELoss(_Loss):
         self.w_noobj = w_noobj
         self.reduction = reduction
 
-    def forward(self, input, target):
+    def forward(self, inputs, targets):
         assert self.reduction in ['mean'], 'Only support mean mode.'
-        pos_idx = (target == 1.0).float()
-        neg_idx = (target == 0.0).float()
+        pos_idx = (targets == 1.0).float()
+        neg_idx = (targets == 0.0).float()
         pos_loss = pos_idx * (inputs - targets) ** 2
         neg_loss = neg_idx * (inputs) ** 2
         if self.reduction == 'mean':
@@ -22,11 +23,10 @@ class MSELoss(_Loss):
         return self.w_obj * pos_loss + self.w_noobj * neg_loss
 
 class Yolov1PostProcess(nn.Module):
-    def __init__(self, num_classes, stride, train=True, device=torch.device("cuda"), w_obj=5.0, w_noobj=1.0,
+    def __init__(self, num_classes, stride, device=torch.device("cuda"), w_obj=5.0, w_noobj=1.0,
                  score_thresh=0.01, nms_thresh=0.5):
         super(Yolov1PostProcess, self).__init__()
         self.num_classes = num_classes
-        self.train = train
         self.stride = stride
         self.device = device
         self.score_thresh = score_thresh
@@ -37,6 +37,7 @@ class Yolov1PostProcess(nn.Module):
         self.cls_loss = nn.CrossEntropyLoss(reduction='none')
         self.loc_center_loss = nn.BCEWithLogitsLoss(reduction='none')
         self.loc_border_loss = nn.MSELoss(reduction='none')
+        self.training = False
 
     def filter(self, gt_bboxes, image_infos, min_size=1):
         padded_h, padded_w = image_infos[0][-2:]
@@ -50,7 +51,8 @@ class Yolov1PostProcess(nn.Module):
 
             bbox_w = v_gts[:, 2] - v_gts[:, 0]
             bbox_h = v_gts[:, 3] - v_gts[:, 1]
-            valid_mask = (bbox_w >= min_size) and (bbox_h >= min_size)
+
+            valid_mask = (bbox_w >= min_size) & (bbox_h >= min_size)
             mask_v_gts = v_gts[valid_mask]
             valid_gt_bboxes.append(v_gts)
         return valid_gt_bboxes
@@ -82,8 +84,8 @@ class Yolov1PostProcess(nn.Module):
         B = len(gt_bboxes)
 
         # generate target tensor
-        ws = w // stride
-        hs = h // stride
+        ws = padded_w // stride
+        hs = padded_h // stride
         target_tensor = torch.zeros([B, hs, ws, 7])
 
         for b_idx in range(B):
@@ -253,7 +255,7 @@ class Yolov1PostProcess(nn.Module):
         # B, K, 4
         loc_pred = preds[:, :, -4:]
 
-        if self.train:
+        if self.training:
             targets = self.get_targets(valid_gt_bboxes, image_infos, self.stride)
             losses = self.get_loss(obj_pred, cls_pred, loc_pred, targets)
             return losses
@@ -274,3 +276,11 @@ class Yolov1PostProcess(nn.Module):
 
                 dt_results = self.predict(dt_bboxes, scores)
             return dt_results
+
+    def train(self, mode=True):
+        self.training = mode
+        for name, m in self.named_modules():
+            if name == "":  # self
+                continue
+            m.train(mode)
+        return self

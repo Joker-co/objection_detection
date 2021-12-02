@@ -89,7 +89,10 @@ class COCODataset(data.Dataset):
             x2, y2 = x1 + w, y1 + h
             gt_bboxes.append([x1, y1, x2, y2, cat])
         # gt_bboxes -> numpy.array
-        gt_bboxes = np.array(gt_bboxes)
+        if len(gt_bboxes) == 0:
+            gt_bboxes = np.zeros([1, 5])
+        else:
+            gt_bboxes = np.array(gt_bboxes)
 
         image, gt_bboxes, scale_factor, resize_h, resize_w = self.transform(image, gt_bboxes)
         # record scale_factor

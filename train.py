@@ -15,19 +15,17 @@ from yolov1.scheduler.lr_scheduler import HCombineLR
 
 class Model(nn.Module):
     def __init__(self, num_classes, stride,
-                 train=True, device=torch.device("cuda"), w_obj=5.0, w_noobj=1.0,
+                 device=torch.device("cuda"), w_obj=5.0, w_noobj=1.0,
                  score_thresh=0.01, nms_thresh=0.5):
         super(Model, self).__init__()
         self.num_classes = num_classes
         self.stride = stride
-        self.train = train
 
         self.backbone = resnet18()
         self.neck = CSPNeck(512, 256)
         self.head = Yolov1Head(512, num_classes)
         self.postprocess = Yolov1PostProcess(num_classes,
                                              stride,
-                                             train=train,
                                              device=device,
                                              w_obj=w_obj,
                                              w_noobj=w_noobj,
@@ -49,7 +47,7 @@ class Model(nn.Module):
 def main():
     train_scales = [416, 416]
     batch_size = 32
-    num_workers = 8
+    num_workers = 0 
     num_classes = 80
     lr = 1e-3
     momentum = 0.9
@@ -58,8 +56,9 @@ def main():
     warm_epoch = 2
     max_epoch = 160
     # build train data
-    train_meta = '/home/SENSETIME/wushuo/hjh/objection_detection/datasets/debug_coco.json'
-    train_image_dir = '/home/SENSETIME/wushuo/hjh/objection_detection/datasets/debug_imgs'
+    train_meta = '/mnt/lustre/share/DSK/datasets/mscoco2017/annotations/instances_train2017.json'
+    train_image_dir = '/mnt/lustre/share/DSK/datasets/mscoco2017/train2017'
+    pretrained_model = '/mnt/lustre/share/DSK/model_zoo/pytorch/imagenet/resnet18-5c106cde.pth' 
     device = torch.device("cuda")
 
     train_dataset = COCODataset(train_meta, train_image_dir, scales=[train_scales[0]], max_scale=train_scales[1])
@@ -76,7 +75,8 @@ def main():
     # build model
     model = Model(num_classes, stride=32)
     # convert model to cuda & train mode
-    model.to(device).train()
+    model.to(device) # .train()
+    model.train()
     
     # load pretrain
     cur_device = torch.cuda.current_device()
@@ -88,7 +88,6 @@ def main():
                           lr=lr,
                           momentum=momentum,
                           weight_decay=weight_decay)
-    milestones = [_ * len(train_dataloader) for _ in milestones]
     lr_scheduler = HCombineLR(epoch_size=len(train_dataloader),
                               optimizer=optimizer,
                               milestones=milestones,
@@ -111,7 +110,7 @@ def main():
         total_loss = 0
         for key in output:
             if 'loss' in key:
-                total_loss += losses[key]
+                total_loss += output[key]
 
         # update
         total_loss.backward()
@@ -124,12 +123,12 @@ def main():
                                                                max_epoch,
                                                                iter_idx % epoch_size + 1,
                                                                epoch_size,
-                                                               lr_scheduler.get_lr())
+                                                               round(lr_scheduler.get_lr()[0], 4))
         logging.info(train_meta)
-        loss_meta = '[Loss] obj_loss: {} cls_loss: {} loc_loss: {} total_loss: {}'.format(output['obj_loss'],
-                                                                                          output['cls_loss'],
-                                                                                          output['loc_loss'],
-                                                                                          output['total_loss'])
+        loss_meta = '[Loss] obj_loss: {} cls_loss: {} loc_loss: {} total_loss: {}'.format(round(output['obj_loss'].item(), 2),
+                                                                                          round(output['cls_loss'].item(), 2),
+                                                                                          round(output['loc_loss'].item(), 2),
+                                                                                          round(output['total_loss'].item(), 2))
         logging.info(loss_meta)
 
 if __name__ == "__main__":
