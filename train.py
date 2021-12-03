@@ -1,3 +1,5 @@
+import random
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -12,6 +14,12 @@ from yolov1.model.neck.CSPneck import CSPNeck
 from yolov1.model.head.yolo import Yolov1Head
 from yolov1.model.postprocess.yolo import Yolov1PostProcess
 from yolov1.scheduler.lr_scheduler import HCombineLR
+
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed ** 2)
+    torch.manual_seed(seed ** 3)
+    torch.cuda.manual_seed(seed ** 4)
 
 class Model(nn.Module):
     def __init__(self, num_classes, stride,
@@ -45,6 +53,10 @@ class Model(nn.Module):
         return output
 
 def main():
+    # set random seed
+    seed = 131
+    set_seed(seed)
+
     train_scales = [416, 416]
     batch_size = 32
     num_workers = 0 
