@@ -58,7 +58,7 @@ def main():
     set_seed(seed)
 
     train_scales = [416, 416]
-    batch_size = 32
+    batch_size = 1 # 32
     num_workers = 0 
     num_classes = 80
     lr = 1e-3

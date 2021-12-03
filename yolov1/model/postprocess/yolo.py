@@ -73,8 +73,8 @@ class Yolov1PostProcess(nn.Module):
         # cal location target
         tx = map_cx - grid_cx
         ty = map_cy - grid_cy
-        tw = np.log(b_w)
-        th = np.log(b_h)
+        tw = torch.log(b_w)
+        th = torch.log(b_h)
         weight = 2.0 - (b_w / padded_w) * (b_h / padded_h)
 
         return grid_cx, grid_cy, tx, ty, tw, th, weight
@@ -109,7 +109,7 @@ class Yolov1PostProcess(nn.Module):
 
     def get_loss(self, obj_pred, cls_pred, loc_pred, targets):
         # objectness
-        obj_pred = obj_pred.sigmoid()
+        obj_pred = obj_pred[:, :].sigmoid()
         obj_target = targets[:, :, 0].float()
         obj_loss = self.obj_loss(obj_pred, obj_target)
 
